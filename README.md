@@ -6,6 +6,7 @@ A complete single-level arcade game, built with TypeScript, Canvas 2D, and Vite.
 
 Requires Node.js 20.19+ or 22.12+ (validated with Node 24).
 
+
 ```sh
 npm ci
 npm run dev
