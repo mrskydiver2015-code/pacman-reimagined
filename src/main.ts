@@ -27,7 +27,7 @@ app.innerHTML = `
   </aside>
   <section class="control-zone" aria-label="Game controls">
     <div class="mobile-controls" role="group" aria-label="Directional pad">
-      <button data-dir="3" aria-label="Move up">↑</button><button data-dir="2" aria-label="Move left">←</button><span class="dpad-center" aria-hidden="true">◕</span><button data-dir="0" aria-label="Move right">→</button><button data-dir="1" aria-label="Move down">↓</button>
+      <button data-dir="3" aria-label="Move up">↑</button><button data-dir="2" aria-label="Move left">←</button><button data-dir="0" aria-label="Move right">→</button><button data-dir="1" aria-label="Move down">↓</button>
     </div>
   </section>
   <div class="actions"><button id="sound" aria-label="Enable sound" aria-pressed="false">♪ <span>SOUND OFF</span></button><button id="restart" aria-label="Restart run">↻ <span>RESTART RUN</span></button></div>
@@ -218,37 +218,83 @@ for (const event of ["pointerup", "pointercancel", "lostpointercapture"] as cons
     if (touch?.id === e.pointerId) touch = null;
   });
 }
-document.querySelectorAll<HTMLButtonElement>("[data-dir]").forEach((button) => {
-  const press = () => {
-    button.classList.add("pressed");
-    game.turn(Number(button.dataset.dir) as Dir);
-    navigator.vibrate?.(12);
-  };
-  // Handle touch immediately, before release, and suppress compatibility clicks.
-  button.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-    press();
-  }, { passive: false });
-  for (const event of ["touchend", "touchcancel"] as const) {
-    button.addEventListener(event, (e) => {
-      if (e.targetTouches.length === 0) button.classList.remove("pressed");
-    });
-  }
-  button.addEventListener("pointerdown", (e) => {
-    // Touch browsers also dispatch pointerdown; avoid queuing the turn twice.
-    if (e.pointerType === "touch" && "ontouchstart" in window) return;
-    if (e.pointerType === "mouse" && e.button !== 0) return;
-    e.preventDefault();
-    button.setPointerCapture(e.pointerId);
-    press();
+const dpad = $(".mobile-controls");
+const directionButtons = Array.from(dpad.querySelectorAll<HTMLButtonElement>("[data-dir]"));
+let padContact: { kind: "touch" | "pointer"; id: number } | null = null;
+let padDirection: Dir | null = null;
+function releasePad() {
+  padContact = null;
+  padDirection = null;
+  directionButtons.forEach((button) => button.classList.remove("pressed"));
+}
+function steerPad(clientX: number, clientY: number) {
+  const bounds = dpad.getBoundingClientRect();
+  // Normalize each axis so the four sectors match a stretched cross as well.
+  const x = (clientX - bounds.left) / bounds.width - 0.5;
+  const y = (clientY - bounds.top) / bounds.height - 0.5;
+  // The exact center retains the current direction; a fresh center press goes up.
+  const direction: Dir = x === 0 && y === 0
+    ? padDirection ?? 3
+    : Math.abs(x) > Math.abs(y) ? (x > 0 ? 0 : 2) : y > 0 ? 1 : 3;
+  if (direction === padDirection) return;
+  padDirection = direction;
+  directionButtons.forEach((button) => {
+    button.classList.toggle("pressed", Number(button.dataset.dir) === direction);
   });
-  for (const event of ["pointerup", "pointercancel", "lostpointercapture"]) {
-    button.addEventListener(event, () => button.classList.remove("pressed"));
+  game.turn(direction);
+  navigator.vibrate?.(12);
+}
+// Listen on the whole pad, including its center and corners. Touch events stay
+// targeted at their starting element even when the thumb slides to another wing.
+dpad.addEventListener("touchstart", (e) => {
+  e.preventDefault();
+  if (padContact) return;
+  const contact = e.changedTouches[0];
+  if (!contact) return;
+  padContact = { kind: "touch", id: contact.identifier };
+  steerPad(contact.clientX, contact.clientY);
+}, { passive: false });
+dpad.addEventListener("touchmove", (e) => {
+  e.preventDefault();
+  if (padContact?.kind !== "touch") return;
+  const contact = Array.from(e.touches).find((item) => item.identifier === padContact?.id);
+  if (contact) steerPad(contact.clientX, contact.clientY);
+}, { passive: false });
+for (const event of ["touchend", "touchcancel"] as const) {
+  dpad.addEventListener(event, (e) => {
+    if (padContact?.kind === "touch" &&
+      Array.from(e.changedTouches).some((item) => item.identifier === padContact?.id)) releasePad();
+  });
+}
+dpad.addEventListener("pointerdown", (e) => {
+  if (e.pointerType === "touch" && "ontouchstart" in window) return;
+  if (padContact || e.button !== 0) return;
+  e.preventDefault();
+  padContact = { kind: "pointer", id: e.pointerId };
+  dpad.setPointerCapture(e.pointerId);
+  steerPad(e.clientX, e.clientY);
+});
+dpad.addEventListener("pointermove", (e) => {
+  if (padContact?.kind === "pointer" && padContact.id === e.pointerId) {
+    steerPad(e.clientX, e.clientY);
   }
-  // Native keyboard / assistive-technology activation has no pointerdown.
+});
+for (const event of ["pointerup", "pointercancel", "lostpointercapture"] as const) {
+  dpad.addEventListener(event, (e) => {
+    if (padContact?.kind === "pointer" && padContact.id === e.pointerId) releasePad();
+  });
+}
+directionButtons.forEach((button) => {
+  // Preserve native keyboard and assistive-technology activation.
   button.addEventListener("click", (e) => {
     if (e.detail === 0) game.turn(Number(button.dataset.dir) as Dir);
   });
+});
+dpad.addEventListener("contextmenu", (e) => e.preventDefault());
+window.addEventListener("blur", releasePad);
+window.addEventListener("resize", releasePad);
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) releasePad();
 });
 canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 document.addEventListener("visibilitychange", () => {

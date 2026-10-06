@@ -111,3 +111,65 @@ test('touch pad feedback, swipes, cancellation, rotation, and high DPI', async (
   await expect.poll(async () => canvas.evaluate(el => el.getBoundingClientRect().bottom)).toBeLessThan(664);
   await context.close();
 });
+
+for (const [width, height] of [[390, 844], [844, 390]]) {
+  test(`connected D-pad steers continuously without lifting at ${width}×${height}`, async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width, height }, isMobile: true, hasTouch: true });
+    const page = await context.newPage();
+    const errors: string[] = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.goto('/');
+    await page.evaluate(async () => {
+      const modulePath = '/src/engine.ts';
+      const { Game } = await import(modulePath);
+      const original = Game.prototype.turn;
+      Game.prototype.turn = function (direction: number) {
+        document.body.dataset.lastTurn = String(direction);
+        original.call(this, direction);
+      };
+      window.addEventListener('touchmove', event => {
+        document.body.dataset.movePrevented = String(event.defaultPrevented);
+      });
+    });
+    const pad = page.locator('.mobile-controls');
+    await expect(pad).toHaveCSS('gap', '0px');
+    await expect(pad.locator('.dpad-center')).toHaveCount(0);
+    const box = (await pad.boundingBox())!;
+    const point = (x: number, y: number, id = 1) => ({ x: box.x + box.width * x, y: box.y + box.height * y, id });
+    const cdp = await context.newCDPSession(page);
+    // A fresh center touch immediately chooses up instead of being a dead zone.
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point(.5, .5)] });
+    await expect(page.locator('[data-dir="3"]')).toHaveClass('pressed');
+    // Cross the center and the former gaps, with one uninterrupted contact.
+    for (const [x, y, direction] of [[.9, .5, 0], [.51, .5, 0], [.5, .9, 1], [.5, .51, 1], [.1, .5, 2], [.49, .5, 2], [.5, .1, 3], [.5, .49, 3], [.95, .7, 0]]) {
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [point(x, y)] });
+      await expect(page.locator('body')).toHaveAttribute('data-last-turn', String(direction));
+      await expect(page.locator('body')).toHaveAttribute('data-move-prevented', 'true');
+      await expect(pad.locator('.pressed')).toHaveCount(1);
+      await expect(page.locator(`[data-dir="${direction}"]`)).toHaveClass('pressed');
+    }
+    // Another finger cannot steal the active thumb's direction.
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point(.95, .7), point(.5, .1, 2)] });
+    await expect(page.locator('[data-dir="0"]')).toHaveClass('pressed');
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
+    await expect(pad.locator('.pressed')).toHaveCount(0);
+    // Even the visually empty corners belong to the touch surface.
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point(.05, .3)] });
+    await expect(page.locator('[data-dir="2"]')).toHaveClass('pressed');
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect(pad.locator('.pressed')).toHaveCount(0);
+    // Mouse/pen dragging and keyboard activation still work.
+    await page.mouse.move(point(.5, .1).x, point(.5, .1).y);
+    await page.mouse.down();
+    await page.mouse.move(point(.9, .5).x, point(.9, .5).y);
+    await expect(page.locator('[data-dir="0"]')).toHaveClass('pressed');
+    await page.mouse.up();
+    await expect(pad.locator('.pressed')).toHaveCount(0);
+    await page.locator('[data-dir="1"]').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('body')).toHaveAttribute('data-last-turn', '1');
+    expect(await page.evaluate(() => [scrollX, scrollY])).toEqual([0, 0]);
+    expect(errors).toEqual([]);
+    await context.close();
+  });
+}
