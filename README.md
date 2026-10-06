@@ -19,6 +19,7 @@ Collect every pellet to win Level 1. Pellets award 10 points; energizers award 5
 ## Verify and deploy
 
 ```sh
+npm run lint
 npm test
 npm run build
 npm run preview
@@ -37,4 +38,15 @@ For Vercel, import the repository, select **Vite**, use `npm run build`, and set
 
 The maze is an architectural homage, not an exact arcade ROM reproduction. Blinky targets the player, Pinky aims four tiles ahead, Inky targets a point relative to Blinky, and Clyde retreats when close. Ghosts alternate seven-second scatter and twenty-second chase periods; frightened ghosts choose random legal routes, and eaten ghosts route back to the house. Shortest-path routing keeps the distinct targeting strategies navigable.
 
-Validated in headless Chromium at 1440px and 390px widths: startup, scoring, pause/resume, sound toggle, restart, touch direction input, and overflow/JavaScript-error checks. There are no later levels or online leaderboards.
+The cabinet stays inside `100dvh` (with a `100vh` fallback), with scrolling and browser touch gestures disabled. Desktop uses three columns; portrait phones reserve 12% for the HUD, 53% for the complete cabinet, and 35% for controls, inside safe-area padding. Short landscape screens place the D-pad alongside the maze. The canvas scales to both available dimensions and renders at the display pixel density. Direction buttons provide pressed feedback plus vibration where supported; Safari uses visual feedback.
+
+Browser regression tests cover 15 viewport sizes from 320×480 to 1920×1080, including short landscape phones, plus touch input, cancellation, rotation, and high-DPI resizing:
+
+```sh
+npx playwright install chromium
+npm run test:e2e
+# Or use an installed Chromium:
+CHROMIUM_PATH=/usr/bin/chromium npm run test:e2e
+```
+
+Validated in headless Chromium. Native iOS Safari / safe-area behavior should also be checked on a device; WebKit installation was blocked by the verification environment's network policy. There are no later levels or online leaderboards.

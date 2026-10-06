@@ -2,13 +2,36 @@ import "./style.css";
 import { Game, MAP, W, H, position, type Dir } from "./engine";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
-app.innerHTML = `<header class="topbar"><a class="wordmark" href="./" aria-label="After Hours home"><span class="brand-icon">◕</span> AFTER HOURS<span class="edition">ARCADE COLLECTION / 001</span></a><div class="top-right"><span class="live-dot"></span> INSERT A LITTLE NOSTALGIA <button id="sound" class="icon-button" aria-label="Enable sound" aria-pressed="false">♪ <span>SOUND OFF</span></button></div></header>
-<main><section class="intro"><div><div class="eyebrow"><span></span> THE CLASSICS, RECHARGED</div><h1>Same chase.<br><em>New energy.</em></h1><p>A familiar maze. A different kind of midnight.<br>Chase the dots. Dodge the ghosts. Own the night.</p></div><div class="level-badge"><span>01</span><div>THE ORIGINAL MAZE<small>REIMAGINED IN NEON</small></div></div></section>
-<section class="arcade" aria-label="Pac-Man arcade"><aside class="left-panel"><div class="section-label">YOUR RUN <span>↗</span></div><div class="score-block"><span>SCORE</span><strong id="score">000000</strong></div><div class="best-block"><span>PERSONAL BEST</span><strong id="best">000000</strong></div><div class="rule"></div><div class="stat-line"><span>LEVEL</span><b>01 <small>/ THE BEGINNING</small></b></div><div class="stat-line"><span>LIVES</span><div id="lives" aria-label="3 lives">◕ ◕ ◕</div></div><div class="progress-title"><span>MAZE CLEARED</span><b id="percent">0%</b></div><div class="progress-track"><div id="progress"></div></div><div class="run-note"><span class="live-dot"></span><span id="status">READY WHEN YOU ARE</span></div><div class="mini-card"><span>THE NIGHT IS YOUNG.</span><p>One more pellet.<br>One more personal best.</p><div class="mini-maze">┏━━┓ ┏━━━━┓<br>┃ ┏┛ ┗━┓ ┃<br>┗━┛ ◕ · · ┃</div></div></aside>
-<div class="cabinet"><div class="cabinet-header"><span><i></i> PAC-MAN <small>REIMAGINED</small></span><button id="pause" aria-label="Pause game">Ⅱ <span>PAUSE</span></button></div><div class="screen"><canvas id="game" aria-label="Pac-Man maze. Use arrow keys or WASD to move." tabindex="0"></canvas><div class="overlay" id="overlay"><span id="overlay-kicker">LEVEL 01 · AFTER DARK</span><h2 id="overlay-title">Ready to<br><em>make a run?</em></h2><p id="overlay-copy">The maze is yours. Make every dot count.</p><button id="play" class="play-button">LET’S PLAY <span>→</span></button><small id="overlay-hint">PRESS ENTER TO START</small></div></div><div class="cabinet-footer"><span><i class="live-dot"></i> <b id="mode">STANDING BY</b></span><span>HIGH SCORES. LOW LIGHTS.</span></div></div>
-<aside class="right-panel"><div class="section-label">THE PLAYBOOK <span>↙</span></div><div class="instruction"><div class="keys"><kbd>↑</kbd><div><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></div></div><h3>Find your flow.</h3><p>Arrow keys or <b>W A S D</b> to move.<br>Queue your next turn early.</p></div><div class="legend"><div><i class="pellet-icon"></i><span>Small bites.<small>10 PTS / PELLET</small></span></div><div><i class="power-icon"></i><span>Big energy.<small>50 PTS / ENERGIZER</small></span></div><div><i class="ghost-icon"></i><span>Turn the tables.<small>EAT BLUE GHOSTS FOR BONUS</small></span></div></div><div class="rule"></div><div class="tip"><span>✳ A LITTLE INSIDE KNOWLEDGE</span><p>They each have a plan.<br>Keep them guessing.</p></div><div class="shortcuts"><span><kbd>P</kbd> Pause</span><span><kbd>M</kbd> Sound</span></div><button class="restart" id="restart">↻ &nbsp; RESTART RUN</button></aside></section>
-<div class="mobile-controls" aria-label="Touch controls"><button data-dir="2" aria-label="Move left">←</button><div><button data-dir="3" aria-label="Move up">↑</button><button data-dir="1" aria-label="Move down">↓</button></div><button data-dir="0" aria-label="Move right">→</button><p>SWIPE THE MAZE<br>OR TAP TO TURN</p></div>
-<footer><span>BUILT FOR THE LOVE OF THE GAME.</span><span class="footer-center">NO COINS. JUST GOOD TIMES. <i>✳</i></span><span>A CLASSIC NEVER CLOCKS OUT. ↗</span></footer></main>`;
+app.innerHTML = `
+<main class="arcade" aria-label="Pac-Man arcade">
+  <aside class="left-panel" aria-label="Your run">
+    <a class="wordmark" href="./" aria-label="After Hours home"><span class="brand-icon">◕</span><span>AFTER<br>HOURS</span></a>
+    <div class="score-block"><span>SCORE</span><strong id="score">000000</strong></div>
+    <div class="best-block"><span>BEST</span><strong id="best">000000</strong></div>
+    <div class="stat-line level"><span>LEVEL</span><b>01</b></div>
+    <div class="stat-line lives"><span>LIVES</span><div id="lives" aria-label="3 lives">◕ ◕ ◕</div></div>
+    <div class="progress"><div class="progress-title"><span>MAZE CLEARED</span><b id="percent">0%</b></div><div class="progress-track"><div id="progress"></div></div></div>
+    <div class="run-note"><span class="live-dot"></span><span id="status">READY WHEN YOU ARE</span></div>
+  </aside>
+  <section class="game-zone" aria-label="Game screen">
+    <div class="cabinet">
+      <div class="cabinet-header"><span><i class="live-dot"></i> PAC-MAN <small>REIMAGINED</small></span><button id="pause" aria-label="Pause game">Ⅱ <span>PAUSE</span></button></div>
+      <div class="screen"><canvas id="game" aria-label="Pac-Man maze. Use arrow keys, WASD, or swipe to move." tabindex="0"></canvas><div class="overlay" id="overlay"><span id="overlay-kicker">LEVEL 01 · AFTER DARK</span><h2 id="overlay-title">Ready to<br><em>make a run?</em></h2><p id="overlay-copy">The maze is yours. Make every dot count.</p><button id="play" class="play-button">LET’S PLAY <span>→</span></button><small id="overlay-hint">PRESS ENTER TO START</small></div></div>
+      <div class="cabinet-footer"><span class="live-dot"></span><b id="mode">STANDING BY</b></div>
+    </div>
+  </section>
+  <aside class="right-panel" aria-label="The playbook">
+    <div class="intro"><span class="eyebrow">PAC-MAN REIMAGINED</span><h1>Same chase.<br><em>New energy.</em></h1></div>
+    <div class="instruction"><div class="keys" aria-hidden="true"><kbd>↑</kbd><div><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></div></div><h2>Find your flow.</h2><p>Arrow keys or <b>W A S D</b> to move.<br>Queue your next turn early.</p><p>Dots: 10 pts · Energizers: 50 pts<br>Eat blue ghosts for a bonus.</p></div>
+    <div class="shortcuts"><span><kbd>P</kbd> Pause</span><span><kbd>M</kbd> Sound</span></div>
+  </aside>
+  <section class="control-zone" aria-label="Game controls">
+    <div class="mobile-controls" role="group" aria-label="Directional pad">
+      <button data-dir="3" aria-label="Move up">↑</button><button data-dir="2" aria-label="Move left">←</button><span class="dpad-center" aria-hidden="true">◕</span><button data-dir="0" aria-label="Move right">→</button><button data-dir="1" aria-label="Move down">↓</button>
+    </div>
+    <div class="actions"><p class="touch-hint">SWIPE THE MAZE<br>OR TAP TO TURN</p><button id="sound" aria-label="Enable sound" aria-pressed="false">♪ <span>SOUND OFF</span></button><button id="restart">↻ <span>RESTART RUN</span></button></div>
+  </section>
+</main>`;
 const $ = (s: string) => document.querySelector<HTMLElement>(s)!;
 const canvas = $("#game") as HTMLCanvasElement,
   ctx = canvas.getContext("2d")!;
@@ -110,14 +133,21 @@ game.onEvent = (kind, x, y, value) => {
     );
   }
 };
+// Fit the entire cabinet, including its chrome, into its allocated grid cell.
 function resize() {
-  const dpr = Math.min(devicePixelRatio || 1, 2);
-  canvas.width = CW * dpr;
-  canvas.height = CH * dpr;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const zone = $(".game-zone");
+  const chrome = $(".cabinet-header").offsetHeight + $(".cabinet-footer").offsetHeight + 2;
+  const width = Math.max(1, Math.min(zone.clientWidth - 2, (zone.clientHeight - chrome) * CW / CH));
+  $(".cabinet").style.width = `${width + 2}px`;
+  const dpr = devicePixelRatio || 1;
+  canvas.width = Math.round(width * dpr);
+  canvas.height = Math.round(width * CH / CW * dpr);
+  ctx.setTransform(canvas.width / CW, 0, 0, canvas.height / CH, 0, 0);
 }
-resize();
+new ResizeObserver(resize).observe($(".game-zone"));
 window.addEventListener("resize", resize);
+window.visualViewport?.addEventListener("resize", resize);
+resize();
 function start() {
   unlock();
   if (game.phase === "won" || game.phase === "over") {
@@ -167,29 +197,45 @@ window.addEventListener("keydown", (e) => {
     game.toggle();
   } else if (k === "m" && !e.repeat) toggleSound();
 });
-let touch: [number, number] | null = null;
+let touch: { id: number; x: number; y: number } | null = null;
 canvas.addEventListener("pointerdown", (e) => {
-  touch = [e.clientX, e.clientY];
+  if (touch || (e.pointerType === "mouse" && e.button !== 0)) return;
+  e.preventDefault();
+  touch = { id: e.pointerId, x: e.clientX, y: e.clientY };
   canvas.setPointerCapture(e.pointerId);
 });
 canvas.addEventListener("pointermove", (e) => {
-  if (!touch) return;
-  const dx = e.clientX - touch[0],
-    dy = e.clientY - touch[1];
+  if (!touch || touch.id !== e.pointerId) return;
+  const dx = e.clientX - touch.x, dy = e.clientY - touch.y;
   if (Math.hypot(dx, dy) > 12) {
     game.turn(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 0 : 2) : dy > 0 ? 1 : 3);
-    touch = [e.clientX, e.clientY];
+    touch.x = e.clientX;
+    touch.y = e.clientY;
   }
 });
-canvas.addEventListener("pointerup", () => (touch = null));
-canvas.addEventListener("pointercancel", () => (touch = null));
-document.querySelectorAll<HTMLButtonElement>("[data-dir]").forEach(
-  (b) =>
-    (b.onpointerdown = (e) => {
-      e.preventDefault();
-      game.turn(Number(b.dataset.dir) as Dir);
-    }),
-);
+for (const event of ["pointerup", "pointercancel", "lostpointercapture"] as const) {
+  canvas.addEventListener(event, (e) => {
+    if (touch?.id === e.pointerId) touch = null;
+  });
+}
+document.querySelectorAll<HTMLButtonElement>("[data-dir]").forEach((button) => {
+  button.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    e.preventDefault();
+    button.setPointerCapture(e.pointerId);
+    button.classList.add("pressed");
+    game.turn(Number(button.dataset.dir) as Dir);
+    navigator.vibrate?.(12);
+  });
+  for (const event of ["pointerup", "pointercancel", "lostpointercapture"]) {
+    button.addEventListener(event, () => button.classList.remove("pressed"));
+  }
+  // Native keyboard / assistive-technology activation has no pointerdown.
+  button.addEventListener("click", (e) => {
+    if (e.detail === 0) game.turn(Number(button.dataset.dir) as Dir);
+  });
+});
+canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 document.addEventListener("visibilitychange", () => {
   if (document.hidden && game.phase === "playing") game.toggle();
 });
