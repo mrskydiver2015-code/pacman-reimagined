@@ -23,9 +23,11 @@ for (const [width, height] of sizes) {
     if (width <= 700 || height <= 500) {
       const zone = await page.locator('.control-zone').boundingBox();
       const pad = await page.locator('.mobile-controls').boundingBox();
-      expect(pad!.width).toBeCloseTo(zone!.width, 0);
+      expect(pad!.width).toBeGreaterThanOrEqual(159);
+      expect(pad!.width).toBeLessThanOrEqual(200);
+      expect(pad!.height).toBeCloseTo(pad!.width, 0);
       expect(pad!.x + pad!.width / 2).toBeCloseTo(zone!.x + zone!.width / 2, 0);
-      expect(pad!.height).toBeGreaterThanOrEqual(zone!.height - 16);
+      expect(pad!.height).toBeLessThanOrEqual(zone!.height);
       await expect(page.locator('.control-zone button')).toHaveCount(4);
       await expect(page.locator('.control-zone p')).toHaveCount(0);
       for (const id of ['sound', 'restart']) {
@@ -72,7 +74,7 @@ test('touch pad feedback, swipes, cancellation, rotation, and high DPI', async (
   const cdp = await context.newCDPSession(page);
   await page.evaluate(() => {
     document.body.dataset.turnCount = '0';
-    window.addEventListener('touchstart', event => {
+    window.addEventListener('pointerdown', event => {
       document.body.dataset.touchPrevented = String(event.defaultPrevented);
     });
   });
@@ -127,7 +129,7 @@ for (const [width, height] of [[390, 844], [844, 390]]) {
         document.body.dataset.lastTurn = String(direction);
         original.call(this, direction);
       };
-      window.addEventListener('touchmove', event => {
+      window.addEventListener('pointermove', event => {
         document.body.dataset.movePrevented = String(event.defaultPrevented);
       });
     });
@@ -137,16 +139,24 @@ for (const [width, height] of [[390, 844], [844, 390]]) {
     const box = (await pad.boundingBox())!;
     const point = (x: number, y: number, id = 1) => ({ x: box.x + box.width * x, y: box.y + box.height * y, id });
     const cdp = await context.newCDPSession(page);
-    // A fresh center touch immediately chooses up instead of being a dead zone.
+    // The neutral hub engages the pointer without buffering an accidental turn.
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point(.5, .5)] });
-    await expect(page.locator('[data-dir="3"]')).toHaveClass('pressed');
+    await expect(pad.locator('.pressed')).toHaveCount(0);
+    await expect(page.locator('body')).not.toHaveAttribute('data-last-turn');
     // Cross the center and the former gaps, with one uninterrupted contact.
-    for (const [x, y, direction] of [[.9, .5, 0], [.51, .5, 0], [.5, .9, 1], [.5, .51, 1], [.1, .5, 2], [.49, .5, 2], [.5, .1, 3], [.5, .49, 3], [.95, .7, 0]]) {
+    for (const [x, y, direction] of [[.9, .5, 0], [.5, .9, 1], [.1, .5, 2], [.5, .1, 3], [.95, .7, 0]]) {
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [point(x, y)] });
       await expect(page.locator('body')).toHaveAttribute('data-last-turn', String(direction));
       await expect(page.locator('body')).toHaveAttribute('data-move-prevented', 'true');
       await expect(pad.locator('.pressed')).toHaveCount(1);
       await expect(page.locator(`[data-dir="${direction}"]`)).toHaveClass('pressed');
+      // Small movements throughout the center clear feedback, preserving the queue.
+      for (const [cx, cy] of [[.5, .5], [.6, .5], [.5, .4], [.4, .5], [.5, .6]]) {
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [point(cx, cy)] });
+        await expect(pad.locator('.pressed')).toHaveCount(0);
+        await expect(page.locator('body')).toHaveAttribute('data-last-turn', String(direction));
+      }
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [point(x, y)] });
     }
     // Another finger cannot steal the active thumb's direction.
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point(.95, .7), point(.5, .1, 2)] });
@@ -163,7 +173,12 @@ for (const [width, height] of [[390, 844], [844, 390]]) {
     await page.mouse.down();
     await page.mouse.move(point(.9, .5).x, point(.9, .5).y);
     await expect(page.locator('[data-dir="0"]')).toHaveClass('pressed');
+    // Pointer capture continues to steer outside the cross and resets on release.
+    await page.mouse.move(point(1.15, .5).x, point(1.15, .5).y);
+    await expect(page.locator('[data-dir="0"]')).toHaveClass('pressed');
     await page.mouse.up();
+    await expect(pad.locator('.pressed')).toHaveCount(0);
+    await page.mouse.move(point(.1, .5).x, point(.1, .5).y);
     await expect(pad.locator('.pressed')).toHaveCount(0);
     await page.locator('[data-dir="1"]').focus();
     await page.keyboard.press('Enter');

@@ -220,68 +220,54 @@ for (const event of ["pointerup", "pointercancel", "lostpointercapture"] as cons
 }
 const dpad = $(".mobile-controls");
 const directionButtons = Array.from(dpad.querySelectorAll<HTMLButtonElement>("[data-dir]"));
-let padContact: { kind: "touch" | "pointer"; id: number } | null = null;
+let padPointerId: number | null = null;
 let padDirection: Dir | null = null;
 function releasePad() {
-  padContact = null;
+  const pointerId = padPointerId;
+  padPointerId = null;
   padDirection = null;
   directionButtons.forEach((button) => button.classList.remove("pressed"));
+  if (pointerId !== null && dpad.hasPointerCapture(pointerId)) {
+    dpad.releasePointerCapture(pointerId);
+  }
 }
 function steerPad(clientX: number, clientY: number) {
   const bounds = dpad.getBoundingClientRect();
-  // Normalize each axis so the four sectors match a stretched cross as well.
-  const x = (clientX - bounds.left) / bounds.width - 0.5;
-  const y = (clientY - bounds.top) / bounds.height - 0.5;
-  // The exact center retains the current direction; a fresh center press goes up.
-  const direction: Dir = x === 0 && y === 0
-    ? padDirection ?? 3
-    : Math.abs(x) > Math.abs(y) ? (x > 0 ? 0 : 2) : y > 0 ? 1 : 3;
+  const x = clientX - bounds.left - bounds.width / 2;
+  const y = clientY - bounds.top - bounds.height / 2;
+  // The connected center is neutral within 18% of the pad's diameter.
+  // Keep the game's buffered turn unchanged while the thumb crosses this hub.
+  const neutral = Math.hypot(x, y) <= Math.min(bounds.width, bounds.height) * 0.18;
+  const angle = Math.atan2(y, x);
+  const direction: Dir | null = neutral ? null
+    : ((Math.round(angle / (Math.PI / 2)) + 4) % 4) as Dir;
   if (direction === padDirection) return;
   padDirection = direction;
   directionButtons.forEach((button) => {
     button.classList.toggle("pressed", Number(button.dataset.dir) === direction);
   });
-  game.turn(direction);
-  navigator.vibrate?.(12);
+  if (direction !== null) {
+    game.turn(direction);
+    navigator.vibrate?.(12);
+  }
 }
-// Listen on the whole pad, including its center and corners. Touch events stay
-// targeted at their starting element even when the thumb slides to another wing.
-dpad.addEventListener("touchstart", (e) => {
-  e.preventDefault();
-  if (padContact) return;
-  const contact = e.changedTouches[0];
-  if (!contact) return;
-  padContact = { kind: "touch", id: contact.identifier };
-  steerPad(contact.clientX, contact.clientY);
-}, { passive: false });
-dpad.addEventListener("touchmove", (e) => {
-  e.preventDefault();
-  if (padContact?.kind !== "touch") return;
-  const contact = Array.from(e.touches).find((item) => item.identifier === padContact?.id);
-  if (contact) steerPad(contact.clientX, contact.clientY);
-}, { passive: false });
-for (const event of ["touchend", "touchcancel"] as const) {
-  dpad.addEventListener(event, (e) => {
-    if (padContact?.kind === "touch" &&
-      Array.from(e.changedTouches).some((item) => item.identifier === padContact?.id)) releasePad();
-  });
-}
+// A single captured pointer drives touch, pen, and mouse across the whole pad.
+// Capture keeps the same thumb in control even outside the visible cross.
 dpad.addEventListener("pointerdown", (e) => {
-  if (e.pointerType === "touch" && "ontouchstart" in window) return;
-  if (padContact || e.button !== 0) return;
+  if (padPointerId !== null || !e.isPrimary || e.button !== 0) return;
   e.preventDefault();
-  padContact = { kind: "pointer", id: e.pointerId };
+  padPointerId = e.pointerId;
   dpad.setPointerCapture(e.pointerId);
   steerPad(e.clientX, e.clientY);
 });
 dpad.addEventListener("pointermove", (e) => {
-  if (padContact?.kind === "pointer" && padContact.id === e.pointerId) {
-    steerPad(e.clientX, e.clientY);
-  }
+  if (padPointerId !== e.pointerId) return;
+  e.preventDefault();
+  steerPad(e.clientX, e.clientY);
 });
 for (const event of ["pointerup", "pointercancel", "lostpointercapture"] as const) {
   dpad.addEventListener(event, (e) => {
-    if (padContact?.kind === "pointer" && padContact.id === e.pointerId) releasePad();
+    if (padPointerId === e.pointerId) releasePad();
   });
 }
 directionButtons.forEach((button) => {
