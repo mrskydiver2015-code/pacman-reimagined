@@ -219,6 +219,7 @@ for (const event of ["pointerup", "pointercancel", "lostpointercapture"] as cons
   });
 }
 const dpad = $(".mobile-controls");
+const touchZone = $(".control-zone");
 const directionButtons = Array.from(dpad.querySelectorAll<HTMLButtonElement>("[data-dir]"));
 let padPointerId: number | null = null;
 let padDirection: Dir | null = null;
@@ -227,8 +228,8 @@ function releasePad() {
   padPointerId = null;
   padDirection = null;
   directionButtons.forEach((button) => button.classList.remove("pressed"));
-  if (pointerId !== null && dpad.hasPointerCapture(pointerId)) {
-    dpad.releasePointerCapture(pointerId);
+  if (pointerId !== null && touchZone.hasPointerCapture(pointerId)) {
+    touchZone.releasePointerCapture(pointerId);
   }
 }
 function steerPad(clientX: number, clientY: number) {
@@ -251,22 +252,22 @@ function steerPad(clientX: number, clientY: number) {
     navigator.vibrate?.(12);
   }
 }
-// A single captured pointer drives touch, pen, and mouse across the whole pad.
+// The entire lower zone is a virtual touch pad, including space outside the cross.
 // Capture keeps the same thumb in control even outside the visible cross.
-dpad.addEventListener("pointerdown", (e) => {
-  if (padPointerId !== null || !e.isPrimary || e.button !== 0) return;
+touchZone.addEventListener("pointerdown", (e) => {
+  if (padPointerId !== null || !e.isPrimary || e.button !== 0 || !dpad.offsetWidth) return;
   e.preventDefault();
   padPointerId = e.pointerId;
-  dpad.setPointerCapture(e.pointerId);
+  touchZone.setPointerCapture(e.pointerId);
   steerPad(e.clientX, e.clientY);
 });
-dpad.addEventListener("pointermove", (e) => {
+touchZone.addEventListener("pointermove", (e) => {
   if (padPointerId !== e.pointerId) return;
   e.preventDefault();
   steerPad(e.clientX, e.clientY);
 });
 for (const event of ["pointerup", "pointercancel", "lostpointercapture"] as const) {
-  dpad.addEventListener(event, (e) => {
+  touchZone.addEventListener(event, (e) => {
     if (padPointerId === e.pointerId) releasePad();
   });
 }
@@ -276,7 +277,7 @@ directionButtons.forEach((button) => {
     if (e.detail === 0) game.turn(Number(button.dataset.dir) as Dir);
   });
 });
-dpad.addEventListener("contextmenu", (e) => e.preventDefault());
+touchZone.addEventListener("contextmenu", (e) => e.preventDefault());
 window.addEventListener("blur", releasePad);
 window.addEventListener("resize", releasePad);
 document.addEventListener("visibilitychange", () => {

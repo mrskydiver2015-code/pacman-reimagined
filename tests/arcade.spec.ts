@@ -20,11 +20,13 @@ for (const [width, height] of sizes) {
     })).toEqual([]);
     const dimensions = await page.locator('#game').boundingBox();
     expect(dimensions!.width / dimensions!.height).toBeCloseTo(544 / 568, 2);
-    if (width <= 700 || height <= 500) {
+    if (width <= 768 || height <= 500) {
       const zone = await page.locator('.control-zone').boundingBox();
       const pad = await page.locator('.mobile-controls').boundingBox();
       expect(pad!.width).toBeGreaterThanOrEqual(159);
-      expect(pad!.width).toBeLessThanOrEqual(200);
+      expect(pad!.width).toBeLessThanOrEqual(320);
+      const verticalPadding = height <= 500 && width > height ? 0 : 8;
+      expect(pad!.width).toBeCloseTo(Math.min(width * .88, 320, zone!.width, zone!.height - verticalPadding), 0);
       expect(pad!.height).toBeCloseTo(pad!.width, 0);
       expect(pad!.x + pad!.width / 2).toBeCloseTo(zone!.x + zone!.width / 2, 0);
       expect(pad!.height).toBeLessThanOrEqual(zone!.height);
@@ -168,6 +170,28 @@ for (const [width, height] of [[390, 844], [844, 390]]) {
     await expect(page.locator('[data-dir="2"]')).toHaveClass('pressed');
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await expect(pad.locator('.pressed')).toHaveCount(0);
+    // The full control zone, including margins outside the cross, is interactive.
+    const zone = page.locator('.control-zone');
+    await expect(zone).toHaveCSS('touch-action', 'none');
+    const zoneBox = (await zone.boundingBox())!;
+    const samples = [
+      { x: zoneBox.x + 1, y: box.y + box.height / 2, direction: 2 },
+      { x: zoneBox.x + zoneBox.width - 1, y: box.y + box.height / 2, direction: 0 },
+      { x: box.x + box.width / 2, y: zoneBox.y + 1, direction: 3 },
+      { x: box.x + box.width / 2, y: zoneBox.y + zoneBox.height - 1, direction: 1 },
+    ];
+    for (const sample of samples) {
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: sample.x, y: sample.y, id: 1 }] });
+      await expect(page.locator(`[data-dir="${sample.direction}"]`)).toHaveClass('pressed');
+      await expect(page.locator('body')).toHaveAttribute('data-last-turn', String(sample.direction));
+      // Glide from the outer margin through the neutral hub into the up wing.
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [point(.5, .5)] });
+      await expect(pad.locator('.pressed')).toHaveCount(0);
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [point(.5, .1)] });
+      await expect(page.locator('[data-dir="3"]')).toHaveClass('pressed');
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await expect(pad.locator('.pressed')).toHaveCount(0);
+    }
     // Mouse/pen dragging and keyboard activation still work.
     await page.mouse.move(point(.5, .1).x, point(.5, .1).y);
     await page.mouse.down();
