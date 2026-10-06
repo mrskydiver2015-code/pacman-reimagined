@@ -86,27 +86,28 @@ kbd { display: inline-flex; align-items: center; justify-content: center; width:
 .shortcuts { display: flex; gap: 12px; font-size: 10px; color: var(--muted); }
 .shortcuts kbd { width: 22px; height: 24px; font-size: 11px; }
 .control-zone { grid-column: 3; grid-row: 3; padding-top: 20px; }
-.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.actions { grid-column: 3; grid-row: 3; align-self: start; padding-top: 20px; display: flex; flex-wrap: wrap; gap: 8px; }
 .actions button { min-height: 44px; padding: 8px 12px; border: 1px solid #425050; border-radius: 5px; background: #1c2929; font: 10px monospace; }
 .actions button:active { background: #425050; }
-.mobile-controls, .touch-hint { display: none; }
+.mobile-controls { display: none; }
 /* Portrait touch layout: HUD / complete maze / thumb controls. */
 @media (max-width: 700px), (pointer: coarse) and (orientation: portrait) {
   .arcade { padding: env(safe-area-inset-top) max(8px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(8px, env(safe-area-inset-left)); grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 12fr) minmax(0, 53fr) minmax(0, 35fr); gap: 0; }
-  .left-panel { grid-area: 1 / 1; display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 100%; border-bottom: 1px solid var(--line); }
+  .left-panel { grid-area: 1 / 1; display: flex; align-items: center; justify-content: space-between; gap: 4px; height: 100%; padding-right: 96px; border-bottom: 1px solid var(--line); }
   .wordmark { font-size: 9px; letter-spacing: 1px; gap: 4px; }
   .brand-icon { font-size: 26px; }
+  .wordmark > span:last-child { display: none; }
   .score-block, .best-block, .stat-line { margin: 0; }
   .score-block > span, .best-block > span, .stat-line > span { font-size: 8px; letter-spacing: .5px; }
-  .score-block strong, .best-block strong { font-size: clamp(13px, 4vw, 21px); margin-top: 4px; }
+  .score-block strong, .best-block strong { font-size: clamp(12px, 3.4vw, 21px); margin-top: 4px; }
   #lives { font-size: clamp(14px, 4vw, 21px); margin-top: 4px; letter-spacing: -2px; }
   .level, .progress, .run-note, .right-panel { display: none; }
   .game-zone { grid-area: 2 / 1; height: 100%; padding: 0; }
   .cabinet { border-radius: 7px; }
   .cabinet-header { padding: 0 8px; letter-spacing: .5px; }
   .cabinet-footer { height: 18px; padding: 0 8px; font-size: 7px; }
-  .control-zone { grid-area: 3 / 1; display: flex; align-items: center; justify-content: center; gap: clamp(12px, 5vw, 32px); padding: 8px 0; }
-  .mobile-controls { display: grid; grid-template: repeat(3, minmax(0, 1fr)) / repeat(3, minmax(0, 1fr)); gap: 5px; height: min(100%, 258px); max-width: 68%; aspect-ratio: 1; }
+  .control-zone { grid-area: 3 / 1; display: flex; align-items: center; justify-content: center; padding: 8px 0; }
+  .mobile-controls { display: grid; grid-template: repeat(3, minmax(0, 1fr)) / repeat(3, minmax(0, 1fr)); gap: 10px; width: 100%; height: 100%; }
   .mobile-controls button { min-width: 0; min-height: 0; border: 1px solid #65756c; border-bottom-width: 4px; border-radius: 12px; background: #243432; color: var(--yellow); font-size: clamp(22px, 6vw, 32px); transition: background .08s, transform .08s; }
   .mobile-controls button.pressed, .mobile-controls button:active { background: var(--yellow); color: #172320; transform: scale(.94); box-shadow: 0 0 18px #f5d47d55; }
   [data-dir="3"] { grid-area: 1 / 2; }
@@ -114,15 +115,15 @@ kbd { display: inline-flex; align-items: center; justify-content: center; width:
   [data-dir="0"] { grid-area: 2 / 3; }
   [data-dir="1"] { grid-area: 3 / 2; }
   .dpad-center { grid-area: 2 / 2; align-self: center; justify-self: center; color: #6f8479; font-size: 24px; }
-  .actions { flex-direction: column; flex-wrap: nowrap; gap: 6px; }
-  .actions button { padding: 8px; font-size: 8px; }
-  .touch-hint { display: block; font: 8px/1.6 monospace; color: var(--muted); margin: 0 0 4px; }
+  .actions { grid-area: 1 / 1; align-self: center; justify-self: end; flex-wrap: nowrap; gap: 4px; padding: 0; }
+  .actions button { width: 44px; height: 44px; padding: 0; font-size: 20px; background: transparent; border-color: transparent; }
+  .actions button span { display: none; }
   .overlay > small { display: none; }
 }
 /* Short landscape phones keep the maze tall and controls alongside it. */
 @media (max-height: 500px) and (orientation: landscape) {
   .arcade { grid-template-columns: minmax(100px, 1fr) minmax(0, 2.5fr) minmax(160px, 1.2fr); grid-template-rows: minmax(0, 1fr); gap: 12px; padding: max(6px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); }
-  .left-panel { grid-area: 1 / 1; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 10px; height: auto; border: 0; }
+  .left-panel { grid-area: 1 / 1; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 10px; height: 100%; padding: 48px 0 0; border: 0; }
   .wordmark { font-size: 10px; }
   .brand-icon { font-size: 24px; }
   .score-block, .best-block, .stat-line { margin: 0; }
@@ -133,7 +134,7 @@ kbd { display: inline-flex; align-items: center; justify-content: center; width:
   .cabinet-header small, .cabinet-header button span { display: none; }
   .cabinet-footer { height: 18px; }
   .control-zone { grid-area: 1 / 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 0; }
-  .mobile-controls { display: grid; grid-template: repeat(3, minmax(0, 1fr)) / repeat(3, minmax(0, 1fr)); gap: 4px; width: min(100%, 210px); height: auto; max-height: 70%; max-width: none; aspect-ratio: 1; }
+  .mobile-controls { display: grid; grid-template: repeat(3, minmax(0, 1fr)) / repeat(3, minmax(0, 1fr)); gap: 10px; width: 100%; height: 100%; }
   .mobile-controls button { border: 1px solid #65756c; border-radius: 8px; background: #243432; color: var(--yellow); font-size: 24px; min-height: 0; }
   .mobile-controls button.pressed, .mobile-controls button:active { background: var(--yellow); color: #172320; transform: scale(.94); }
   [data-dir="3"] { grid-area: 1 / 2; }
@@ -141,9 +142,9 @@ kbd { display: inline-flex; align-items: center; justify-content: center; width:
   [data-dir="0"] { grid-area: 2 / 3; }
   [data-dir="1"] { grid-area: 3 / 2; }
   .dpad-center { grid-area: 2 / 2; place-self: center; color: #6f8479; }
-  .actions { flex-direction: row; flex-wrap: nowrap; gap: 4px; }
-  .actions button { font-size: 8px; padding: 4px; }
-  .touch-hint, .overlay > small { display: none; }
+  .actions { grid-area: 1 / 1; align-self: start; justify-self: start; flex-direction: row; flex-wrap: nowrap; gap: 4px; padding: 0; }
+  .actions button { width: 44px; height: 44px; padding: 0; font-size: 20px; background: transparent; border-color: transparent; }
+  .actions button span, .overlay > small { display: none; }
 }
 @media (max-height: 600px) and (min-width: 701px) {
   .progress, .run-note { display: none; }

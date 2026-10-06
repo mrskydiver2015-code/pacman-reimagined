@@ -21,6 +21,18 @@ for (const [width, height] of sizes) {
     const dimensions = await page.locator('#game').boundingBox();
     expect(dimensions!.width / dimensions!.height).toBeCloseTo(544 / 568, 2);
     if (width <= 700 || height <= 500) {
+      const zone = await page.locator('.control-zone').boundingBox();
+      const pad = await page.locator('.mobile-controls').boundingBox();
+      expect(pad!.width).toBeCloseTo(zone!.width, 0);
+      expect(pad!.x + pad!.width / 2).toBeCloseTo(zone!.x + zone!.width / 2, 0);
+      expect(pad!.height).toBeGreaterThanOrEqual(zone!.height - 16);
+      await expect(page.locator('.control-zone button')).toHaveCount(4);
+      await expect(page.locator('.control-zone p')).toHaveCount(0);
+      for (const id of ['sound', 'restart']) {
+        await expect(page.locator(`#${id} span`)).toBeHidden();
+        const action = await page.locator(`#${id}`).boundingBox();
+        expect(action!.y).toBeLessThan(zone!.y + 1);
+      }
       for (const button of await page.locator('[data-dir]').all()) {
         const box = await button.boundingBox();
         expect(box!.width).toBeGreaterThanOrEqual(44);
@@ -53,17 +65,37 @@ test('touch pad feedback, swipes, cancellation, rotation, and high DPI', async (
     const original = Game.prototype.turn;
     Game.prototype.turn = function (direction: number) {
       document.body.dataset.lastTurn = String(direction);
+      document.body.dataset.turnCount = String(Number(document.body.dataset.turnCount || 0) + 1);
       original.call(this, direction);
     };
   });
+  const cdp = await context.newCDPSession(page);
+  await page.evaluate(() => {
+    document.body.dataset.turnCount = '0';
+    window.addEventListener('touchstart', event => {
+      document.body.dataset.touchPrevented = String(event.defaultPrevented);
+    });
+  });
   for (const direction of [0, 1, 2, 3]) {
     const button = page.locator(`[data-dir="${direction}"]`);
-    await button.dispatchEvent('pointerdown', { pointerId: 1, pointerType: 'touch' });
+    const box = (await button.boundingBox())!;
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [{ x: box.x + box.width / 2, y: box.y + box.height / 2 }],
+    });
     await expect(button).toHaveClass('pressed');
+    await expect(page.locator('body')).toHaveAttribute('data-touch-prevented', 'true');
     await expect(page.locator('body')).toHaveAttribute('data-last-turn', String(direction));
-    await button.dispatchEvent('pointercancel', { pointerId: 1 });
+    await expect(page.locator('body')).toHaveAttribute('data-turn-count', String(direction + 1));
+    await cdp.send('Input.dispatchTouchEvent', { type: direction % 2 ? 'touchCancel' : 'touchEnd', touchPoints: [] });
     await expect(button).not.toHaveClass('pressed');
+    await expect(page.locator('body')).toHaveAttribute('data-turn-count', String(direction + 1));
   }
+  expect(await page.evaluate(() => [scrollX, scrollY])).toEqual([0, 0]);
+  await page.locator('#sound').tap();
+  await expect(page.locator('#sound')).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('#sound').tap();
+  await expect(page.locator('#sound')).toHaveAttribute('aria-pressed', 'false');
   const canvas = page.locator('#game');
   for (const [dx, dy, direction] of [[40, 0, 0], [0, 40, 1], [-40, 0, 2], [0, -40, 3]]) {
     await canvas.dispatchEvent('pointerdown', { pointerId: 1, clientX: 150, clientY: 180 });

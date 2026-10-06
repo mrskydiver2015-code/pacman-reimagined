@@ -29,8 +29,8 @@ app.innerHTML = `
     <div class="mobile-controls" role="group" aria-label="Directional pad">
       <button data-dir="3" aria-label="Move up">↑</button><button data-dir="2" aria-label="Move left">←</button><span class="dpad-center" aria-hidden="true">◕</span><button data-dir="0" aria-label="Move right">→</button><button data-dir="1" aria-label="Move down">↓</button>
     </div>
-    <div class="actions"><p class="touch-hint">SWIPE THE MAZE<br>OR TAP TO TURN</p><button id="sound" aria-label="Enable sound" aria-pressed="false">♪ <span>SOUND OFF</span></button><button id="restart">↻ <span>RESTART RUN</span></button></div>
   </section>
+  <div class="actions"><button id="sound" aria-label="Enable sound" aria-pressed="false">♪ <span>SOUND OFF</span></button><button id="restart" aria-label="Restart run">↻ <span>RESTART RUN</span></button></div>
 </main>`;
 const $ = (s: string) => document.querySelector<HTMLElement>(s)!;
 const canvas = $("#game") as HTMLCanvasElement,
@@ -219,13 +219,28 @@ for (const event of ["pointerup", "pointercancel", "lostpointercapture"] as cons
   });
 }
 document.querySelectorAll<HTMLButtonElement>("[data-dir]").forEach((button) => {
-  button.addEventListener("pointerdown", (e) => {
-    if (e.pointerType === "mouse" && e.button !== 0) return;
-    e.preventDefault();
-    button.setPointerCapture(e.pointerId);
+  const press = () => {
     button.classList.add("pressed");
     game.turn(Number(button.dataset.dir) as Dir);
     navigator.vibrate?.(12);
+  };
+  // Handle touch immediately, before release, and suppress compatibility clicks.
+  button.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    press();
+  }, { passive: false });
+  for (const event of ["touchend", "touchcancel"] as const) {
+    button.addEventListener(event, (e) => {
+      if (e.targetTouches.length === 0) button.classList.remove("pressed");
+    });
+  }
+  button.addEventListener("pointerdown", (e) => {
+    // Touch browsers also dispatch pointerdown; avoid queuing the turn twice.
+    if (e.pointerType === "touch" && "ontouchstart" in window) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    e.preventDefault();
+    button.setPointerCapture(e.pointerId);
+    press();
   });
   for (const event of ["pointerup", "pointercancel", "lostpointercapture"]) {
     button.addEventListener(event, () => button.classList.remove("pressed"));
